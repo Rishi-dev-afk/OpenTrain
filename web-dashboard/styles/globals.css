@@ -1,35 +1,35 @@
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
 
 :root {
-  /* Core palette — soft dark theme with subtle elevation */
-  --bg-base:       #121212;
-  --bg-surface:    #1A1A1B;
-  --bg-elevated:   #252526;
-  --bg-hover:      #2D2D2E;
+  /* Core palette — dark theme with electric ML vibes */
+  --bg-base:       #0F1117;
+  --bg-surface:    #161B22;
+  --bg-elevated:   #21262D;
+  --bg-hover:      #30363D;
 
-  /* Borders — soft and subtle */
-  --border:        #2D2D2E;
-  --border-bright: #3C3C3D;
+  /* Borders — electric and refined */
+  --border:        #30363D;
+  --border-bright: #444C56;
 
-  /* Text — off-white and light silver for high contrast */
-  --text-primary:   #E8E8E8;
-  --text-secondary: #8B8B8C;
-  --text-muted:     #5B5B5C;
+  /* Text — bright white and electric accents for high contrast */
+  --text-primary:   #F0F6FC;
+  --text-secondary: #8B949E;
+  --text-muted:     #6E7681;
 
-  /* Accent — muted gold */
-  --accent:        #D4AF37;
-  --accent-dim:    #3D3424;
-  --accent-glow:   rgba(212, 175, 55, 0.12);
+  /* Accent — vibrant cyan (electric, distributed networks) */
+  --accent:        #00D9FF;
+  --accent-dim:    #0D3C4A;
+  --accent-glow:   rgba(0, 217, 255, 0.15);
 
-  /* Status colors — muted and refined */
-  --green:         #6DB876;
-  --green-dim:     #263825;
-  --red:           #D97979;
-  --red-dim:       #3A2424;
-  --blue:          #7B9FCF;
-  --blue-dim:      #263540;
-  --yellow:        #E8C547;
-  --yellow-dim:    #3D3B24;
+  /* Status colors — vibrant and energetic */
+  --green:         #3FB950;
+  --green-dim:     #0D2818;
+  --red:           #F85149;
+  --red-dim:       #3D1F1A;
+  --blue:          #58A6FF;
+  --blue-dim:      #0D1F3C;
+  --yellow:        #D29922;
+  --yellow-dim:    #3B2300;
 
   /* Fonts */
   --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
@@ -370,10 +370,10 @@ tbody td.mono    { font-family: var(--font-mono); }
 
 .btn-primary {
   background: var(--accent);
-  color: #1A1A1B;
+  color: #0F1117;
   border-color: var(--accent);
 }
-.btn-primary:hover { background: #E8C547; border-color: #E8C547; }
+.btn-primary:hover { background: #00B8D4; border-color: #00B8D4; }
 .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .btn-ghost {
@@ -556,20 +556,29 @@ tbody td.mono    { font-family: var(--font-mono); }
 
 /* ── Light theme overrides ── */
 [data-theme="light"] {
-  --bg-base:       #fafafa;
-  --bg-surface:    #ffffff;
-  --bg-elevated:   #f2f2f2;
-  --bg-hover:      #e0e0e0;
+  --bg-base:       #ffffff;
+  --bg-surface:    #f6f8fa;
+  --bg-elevated:   #eaeef2;
+  --bg-hover:      #d0d7de;
 
-  --border:        #e0e0e0;
-  --border-bright: #c8c8c8;
+  --border:        #d0d7de;
+  --border-bright: #b1bac4;
 
-  --text-primary:   #1a1a1a;
-  --text-secondary: #333333;
-  --text-muted:     #555555;
+  --text-primary:   #0d1117;
+  --text-secondary: #424a53;
+  --text-muted:     #656d76;
 
-  /* accents remain the same for brand consistency */
-  --accent:        #d4af37;
-  --accent-dim:    #3d3424;
-  --accent-glow:   rgba(212, 175, 55, 0.12);
+  /* accents match dark theme for brand consistency */
+  --accent:        #0969da;
+  --accent-dim:    #e3f2fd;
+  --accent-glow:   rgba(9, 105, 218, 0.12);
+
+  --green:         #1a7f37;
+  --green-dim:     #dafbe1;
+  --red:           #d1242f;
+  --red-dim:       #ffebe6;
+  --blue:          #0969da;
+  --blue-dim:      #ddf4ff;
+  --yellow:        #9e6a03;
+  --yellow-dim:    #fff8c5;
 }
