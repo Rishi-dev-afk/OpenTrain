@@ -28,7 +28,7 @@ from typing import Optional
 
 import requests
 
-from ml_tasks import dispatch
+from .ml_tasks import dispatch
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 
