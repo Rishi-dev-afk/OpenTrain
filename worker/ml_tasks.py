@@ -265,7 +265,6 @@ TASK_REGISTRY: dict[str, Any] = {
     "sentiment":  run_sentiment,
     "tokenize":   run_tokenize,
     "preprocess": run_preprocess,
-    "stats":      run_stats,
 }
 
 

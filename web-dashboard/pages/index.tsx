@@ -69,14 +69,16 @@ export default function JobsPage() {
   const completed = jobs.filter(j => j.status === 'completed').length;
   const failed    = jobs.filter(j => j.status === 'failed').length;
 
-  const filteredJobs = jobs.filter(j => {
-    if (statusFilter !== 'all' && j.status !== statusFilter) return false;
-    if (search.trim()) {
-      const needle = search.toLowerCase();
-      return j.id.includes(needle) || j.job_type.toLowerCase().includes(needle);
-    }
-    return true;
-  });
+  const filteredJobs = jobs
+    .filter(j => j.job_type !== 'stats') // hide statistical-analysis jobs
+    .filter(j => {
+      if (statusFilter !== 'all' && j.status !== statusFilter) return false;
+      if (search.trim()) {
+        const needle = search.toLowerCase();
+        return j.id.includes(needle) || j.job_type.toLowerCase().includes(needle);
+      }
+      return true;
+    });
 
   return (
     <>

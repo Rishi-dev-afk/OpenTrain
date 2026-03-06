@@ -6,7 +6,6 @@ import { api } from '../lib/api';
 const JOB_TYPES = [
   { value: 'embedding',  label: 'Embedding Generation',  desc: 'Generate sentence embeddings using all-MiniLM-L6-v2' },
   { value: 'sentiment',  label: 'Sentiment Analysis',    desc: 'Classify text sentiment as positive/negative/neutral' },
-  { value: 'stats',      label: 'Statistical Analysis',  desc: 'Analyze text statistics: word counts, vocabulary, n-grams' },
   { value: 'tokenize',   label: 'Tokenization',          desc: 'Whitespace-tokenize each line of text' },
   { value: 'preprocess', label: 'Preprocessing',         desc: 'Lowercase + strip each line of text' },
 ];

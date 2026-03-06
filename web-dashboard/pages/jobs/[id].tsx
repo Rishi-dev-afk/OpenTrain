@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import { api, JobDetail, ResultSummary, TaskSummary } from '../../lib/api';
-import { SentimentChart, StatsChart } from '../../components/ResultCharts';
+import { SentimentChart } from '../../components/ResultCharts';
 
 function fmt(iso: string | null) {
   if (!iso) return '—';
@@ -45,6 +45,7 @@ export default function JobDetailPage() {
   const [job, setJob]                 = useState<JobDetail | null>(null);
   const [summary, setSummary]         = useState<ResultSummary | null>(null);
   const [resultData, setResultData]   = useState<any>(null);
+  const [isStatsJob, setIsStatsJob]   = useState(false);
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState<string | null>(null);
   const [filter, setFilter]           = useState<string>('all');
@@ -54,6 +55,7 @@ export default function JobDetailPage() {
     api.jobs.get(id)
       .then(data => {
         setJob(data);
+        setIsStatsJob(data.job_type === 'stats');
         setLoading(false);
         // Fetch result summary once job completes
         if (data.status === 'completed' && !summary) {
@@ -83,6 +85,15 @@ export default function JobDetailPage() {
   if (error || !job) return (
     <div className="page">
       <div className="alert alert-error">{error ?? 'Job not found'}</div>
+      <Link href="/" style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)', fontSize: 12, marginTop: 12, display: 'inline-block' }}>
+        ← Back to jobs
+      </Link>
+    </div>
+  );
+
+  if (isStatsJob) return (
+    <div className="page">
+      <div className="alert alert-error">Statistical analysis jobs are no longer visible.</div>
       <Link href="/" style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)', fontSize: 12, marginTop: 12, display: 'inline-block' }}>
         ← Back to jobs
       </Link>
@@ -182,17 +193,14 @@ export default function JobDetailPage() {
           </div>
         </div>
 
-        {/* Visualization section for stats and sentiment */}
-        {isDone && resultData && (job.job_type === 'stats' || job.job_type === 'sentiment') && (
+        {/* Visualization section for sentiment only */}
+        {isDone && resultData && job.job_type === 'sentiment' && (
           <div className="card" style={{ marginBottom: 24 }}>
             <div className="card-header">
-              <span className="card-label">
-                {job.job_type === 'sentiment' ? '📊 Sentiment Analysis' : '📈 Statistical Analysis'}
-              </span>
+              <span className="card-label">📊 Sentiment Analysis</span>
             </div>
             <div style={{ padding: '16px 0' }}>
-              {job.job_type === 'sentiment' && <SentimentChart sentimentData={resultData} />}
-              {job.job_type === 'stats' && <StatsChart statsData={resultData} />}
+              <SentimentChart sentimentData={resultData} />
             </div>
           </div>
         )}
