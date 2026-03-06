@@ -157,7 +157,18 @@ def run_stats(payload: dict) -> dict:
             }
         }
     """
-    texts = _extract_texts(payload.get("data", []))
+    data = payload.get("data", [])
+    texts = []
+    for item in data:
+        if isinstance(item, str):
+            texts.append(item)
+        elif isinstance(item, dict):
+            # For structured data (e.g., CSV rows), concatenate all string values
+            text_parts = [str(v) for v in item.values() if isinstance(v, str)]
+            texts.append(' '.join(text_parts))
+        else:
+            texts.append(str(item))
+    
     if not texts:
         return {"stats": {}}
 

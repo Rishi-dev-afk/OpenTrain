@@ -209,10 +209,7 @@ def _merge_stats(tasks: list) -> tuple[dict, dict]:
     merged_stats = {
         "total_texts": sum(s.get("total_texts", 0) for s in all_stats),
         "total_words": sum(s.get("total_words", 0) for s in all_stats),
-        "unique_words": len(set(
-            w for s in all_stats 
-            for w in (s.get("top_10_words", []) if isinstance(s.get("top_10_words"), list) else [])
-        )),  # Rough estimate from top words
+        "unique_words": len(set(word for s in all_stats for word, _ in s.get("top_10_words", []))),
         "avg_document_length": round(
             sum(s.get("total_texts", 0) * s.get("avg_length", 0) for s in all_stats) / 
             max(sum(s.get("total_texts", 0) for s in all_stats), 1),
@@ -224,8 +221,8 @@ def _merge_stats(tasks: list) -> tuple[dict, dict]:
             2
         ),
         "overall_vocabulary_richness": round(
-            sum(s.get("total_words", 0) for s in all_stats) /
-            max(sum(s.get("total_texts", 0) for s in all_stats), 1),
+            len(set(word for s in all_stats for word, _ in s.get("top_10_words", []))) /
+            max(sum(s.get("total_words", 0) for s in all_stats), 1),
             4
         ),
         "min_length": min(s.get("min_length", float('inf')) for s in all_stats) if all_stats else 0,
