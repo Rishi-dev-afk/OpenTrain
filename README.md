@@ -306,6 +306,7 @@ We welcome contributions! OpenTrain is designed to be easy to extend.
 
 ### Ways to Contribute
 
+
 - **New Workloads**: Add ML processing capabilities
 - **Dashboard Improvements**: Better UI/UX, charts, themes
 - **Coordinator Features**: Priority scheduling, worker capabilities
