@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://opentrain-coordinator.onrender.com/:path*"
+      "destination": "https://opentrain.onrender.com/:path*"
     }
   ]
 }
