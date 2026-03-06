@@ -185,9 +185,9 @@ export function StatsChart({ statsData }: StatsChartProps) {
           </div>
           <div style={{ padding: 12, border: '1px solid var(--border)', borderRadius: 4 }}>
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)' }}>Avg Sentence Length</div>
-              <div style={{ color: 'var(--text-primary)', marginTop: 4, fontWeight: 500 }}>
-                {stats.avg_sentence_length?.toFixed(1)} words
-              </div>
+            <div style={{ color: 'var(--text-primary)', marginTop: 4, fontWeight: 500 }}>
+              {stats.avg_words_per_document?.toFixed(1)} words
+            </div>
           </div>
         </div>
       </div>

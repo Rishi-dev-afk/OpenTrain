@@ -206,47 +206,24 @@ def _merge_stats(tasks: list) -> tuple[dict, dict]:
         return {"error": "No statistics to merge"}, {"total_items": 0}
 
     # Aggregate statistics across all shards
-    total_texts = sum(s.get("total_texts", 0) for s in all_stats)
-    total_words = sum(s.get("total_words", 0) for s in all_stats)
-
-    # Estimate unique words by summing shard unique counts (best-effort).
-    unique_words_est = sum(s.get("unique_words", 0) for s in all_stats)
-
     merged_stats = {
-<<<<<<< HEAD
         "total_texts": sum(s.get("total_texts", 0) for s in all_stats),
         "total_words": sum(s.get("total_words", 0) for s in all_stats),
         "unique_words": len(set(word for s in all_stats for word, _ in s.get("top_10_words", []))),
-=======
-        "total_texts": total_texts,
-        "total_words": total_words,
-        "unique_words": unique_words_est,
->>>>>>> e9c75aa (...)
         "avg_document_length": round(
-            sum(s.get("total_texts", 0) * s.get("avg_length", 0) for s in all_stats) /
-            max(total_texts, 1),
+            sum(s.get("total_texts", 0) * s.get("avg_length", 0) for s in all_stats) / 
+            max(sum(s.get("total_texts", 0) for s in all_stats), 1),
             2
         ),
         "avg_words_per_document": round(
-            sum(s.get("total_texts", 0) * s.get("avg_words", 0) for s in all_stats) /
-            max(total_texts, 1),
+            sum(s.get("total_texts", 0) * s.get("avg_words", 0) for s in all_stats) / 
+            max(sum(s.get("total_texts", 0) for s in all_stats), 1),
             2
         ),
-        # Overall vocabulary richness: unique words per document (best-effort)
         "overall_vocabulary_richness": round(
-<<<<<<< HEAD
             len(set(word for s in all_stats for word, _ in s.get("top_10_words", []))) /
             max(sum(s.get("total_words", 0) for s in all_stats), 1),
-=======
-            unique_words_est / max(total_texts, 1),
->>>>>>> e9c75aa (...)
             4
-        ),
-        # Aggregate average sentence length across shards (weighted by doc count)
-        "avg_sentence_length": round(
-            sum(s.get("total_texts", 0) * s.get("avg_sentence_length", 0) for s in all_stats) /
-            max(total_texts, 1),
-            2
         ),
         "min_length": min(s.get("min_length", float('inf')) for s in all_stats) if all_stats else 0,
         "max_length": max(s.get("max_length", 0) for s in all_stats) if all_stats else 0,
