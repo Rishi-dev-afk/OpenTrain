@@ -43,7 +43,6 @@ export default function JobDetailPage() {
   const { id }                        = router.query as { id: string };
   const [job, setJob]                 = useState<JobDetail | null>(null);
   const [summary, setSummary]         = useState<ResultSummary | null>(null);
-  const [resultData, setResultData]   = useState<any>(null);
   const [isStatsJob, setIsStatsJob]   = useState(false);
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState<string | null>(null);
@@ -59,11 +58,6 @@ export default function JobDetailPage() {
         // Fetch result summary once job completes
         if (data.status === 'completed' && !summary) {
           api.jobs.resultSummary(id).then(setSummary).catch(() => {});
-          // Fetch full result for visualization
-          fetch(`/api/jobs/${id}/result`)
-            .then(r => r.json())
-            .then(setResultData)
-            .catch(() => {});
         }
       })
       .catch(e => { setError(e.message); setLoading(false); });
@@ -192,17 +186,6 @@ export default function JobDetailPage() {
           </div>
         </div>
 
-        {/* Visualization section for sentiment only */}
-        {isDone && resultData && job.job_type === 'sentiment' && (
-          <div className="card" style={{ marginBottom: 24 }}>
-            <div className="card-header">
-              <span className="card-label">📊 Sentiment Analysis</span>
-            </div>
-            <div style={{ padding: '16px 0' }}>
-              <SentimentChart sentimentData={resultData} />
-            </div>
-          </div>
-        )}
 
         {/* Result summary download card */}
         {isDone && summary && (

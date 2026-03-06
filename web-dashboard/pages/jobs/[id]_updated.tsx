@@ -43,7 +43,6 @@ export default function JobDetailPage() {
   const { id }                        = router.query as { id: string };
   const [job, setJob]                 = useState<JobDetail | null>(null);
   const [summary, setSummary]         = useState<ResultSummary | null>(null);
-  const [resultData, setResultData]   = useState<any>(null);
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState<string | null>(null);
   const [filter, setFilter]           = useState<string>('all');
@@ -59,11 +58,6 @@ export default function JobDetailPage() {
         // Fetch result summary once job completes
         if (data.status === 'completed' && !summary) {
           api.jobs.resultSummary(id).then(setSummary).catch(() => {});
-          // Fetch full result for visualization
-          fetch(`/api/jobs/${id}/result`)
-            .then(r => r.json())
-            .then(setResultData)
-            .catch(() => {});
         }
       })
       .catch(e => { setError(e.message); setLoading(false); });
