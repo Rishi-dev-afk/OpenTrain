@@ -2,7 +2,15 @@
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-OpenTrain is a distributed machine learning compute coordinator that enables volunteers to contribute their computational resources for parallel ML processing tasks. Built for scalability and reliability, it allows users to submit datasets for processing across a network of volunteer worker nodes.
+**OpenTrain turns volunteer machines into a distributed ML compute network.**
+
+Running large ML workloads is expensive and centralized. Cloud compute costs money, powerful single machines are scarce, and existing distributed systems like Ray or Spark are too complex for most people to self-host. Meanwhile, there are millions of idle laptops, desktops, and servers sitting unused — volunteer compute that has nowhere to go.
+
+OpenTrain fixes this. It splits ML workloads — embedding generation, tokenization, dataset preprocessing — into small shards and distributes them across any machines that opt in. Volunteers contribute compute with a single command. Jobs complete faster the more workers join. Results are merged and returned to the user as a single downloadable artifact.
+
+The core idea: **shardable ML tasks + volunteer machines + a coordinator = distributed ML compute for everyone.**
+
+---
 
 ## Table of Contents
 
@@ -17,26 +25,26 @@ OpenTrain is a distributed machine learning compute coordinator that enables vol
 - [Contributing](#contributing)
 - [License](#license)
 
+---
+
 ## Overview
 
-OpenTrain solves the challenge of distributed ML computation by providing a robust coordination layer between job submitters and volunteer compute nodes. Users submit datasets through a web dashboard, which are automatically sharded into tasks and distributed to available workers. Workers process tasks locally using optimized ML libraries and return results for aggregation.
+OpenTrain has three components that work together:
 
-### Key Benefits
+- **Coordinator** — the brain. Accepts jobs, shards datasets into tasks, maintains a queue, assigns work to volunteers, collects results, and merges them into a final artifact.
+- **Workers** — the muscle. Lightweight Python processes that run on volunteer machines. They register with the coordinator, poll for tasks, execute ML locally, and return results. Stateless and disposable — workers can join or leave at any time without breaking anything.
+- **Dashboard** — the interface. A web UI for submitting jobs, watching live progress across workers, and downloading completed results.
 
-- **Distributed Processing**: Scale ML workloads across multiple volunteer machines
-- **Fault Tolerance**: Automatic retry, timeout handling, and recovery mechanisms
-- **Easy Deployment**: One-command setup for coordinators, dashboards, and workers
-- **Extensible**: Simple framework for adding new ML workloads
-- **Production Ready**: Built with FastAPI, Next.js, and comprehensive monitoring
+The system is built around a **pull model**: workers request tasks from the coordinator rather than having tasks pushed to them. This means no NAT or firewall issues for volunteers, natural handling of worker churn, and graceful degradation if machines disappear mid-job.
+
+---
 
 ## Architecture
 
-OpenTrain consists of three main components:
-
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Web Dashboard │────│   Coordinator    │◄───┤   Worker Nodes  │
-│    (Next.js)    │    │   (FastAPI)      │    │  (Python/Docker) │
+│   Web Dashboard │────│   Coordinator    │◄───│   Worker Nodes  │
+│    (Next.js)    │    │   (FastAPI)      │    │  (Python)       │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
                               │
                               ▼
@@ -46,299 +54,249 @@ OpenTrain consists of three main components:
                        └──────────────────┘
 ```
 
-### Coordinator (`coordinator/`)
+**Job lifecycle:**
 
-The central orchestration service built with FastAPI and SQLAlchemy:
+```
+User submits dataset
+        │
+        ▼
+Coordinator shards it into N tasks
+        │
+        ▼
+Workers pull tasks, run ML locally, return results
+        │
+        ▼
+Coordinator aggregates → single downloadable artifact
+```
 
-- **Job Management**: Accepts job submissions, shards datasets into tasks
-- **Task Scheduling**: FIFO task distribution to registered workers
-- **Worker Monitoring**: Heartbeat tracking and automatic failover
-- **Result Aggregation**: Merges task results into final artifacts
-- **Background Scheduler**: Reliability layer with periodic health checks
-- **API**: RESTful endpoints for all operations
+The more workers that join, the faster jobs complete. Workers are completely stateless — all context is included in the task payload, so machines can process tasks without knowing anything about the broader job.
 
-**Database Schema:**
-- `jobs`: Job metadata, status, progress tracking
-- `tasks`: Individual work units with status and results
-- `workers`: Registered compute nodes and their status
-
-### Dashboard (`web-dashboard/`)
-
-A modern React-based web interface built with Next.js:
-
-- **Job Submission**: Intuitive forms for dataset upload and job configuration
-- **Progress Monitoring**: Real-time job status and task-level details
-- **Result Download**: Direct download of processed artifacts
-- **Worker Overview**: Live view of connected volunteer nodes
-
-### Workers (`worker/`)
-
-Lightweight compute clients that volunteer processing power:
-
-- **Registration**: Automatic registration with coordinator
-- **Task Polling**: Continuous polling for available work
-- **ML Execution**: Local processing using optimized libraries
-- **Result Submission**: Integrity-verified result delivery
-- **Fault Handling**: Automatic retry and failure reporting
+---
 
 ## Features
 
 ### Reliability & Fault Tolerance
 
-- **Heartbeat Monitoring**: Workers send periodic health signals
-- **Task Timeouts**: Automatic reassignment of hung tasks
-- **Retry Logic**: Configurable retry attempts with exponential backoff
-- **Stalled Job Recovery**: Background detection and repair of stuck jobs
-- **Result Integrity**: SHA-256 checksums for all task results
+Volunteer networks are inherently unreliable. OpenTrain is built around this reality:
+
+- **Heartbeat monitor** — workers that miss 60 seconds of heartbeats are marked offline; their in-flight tasks are immediately returned to the queue for reassignment
+- **Task timeout** — tasks assigned but not completed within 5 minutes are automatically requeued, even if the worker is still alive but hung
+- **Retry limit** — tasks that fail 3 times are marked permanently failed; the parent job is flagged
+- **Stalled job recovery** — a background pass re-derives task counts from the database to catch drift and trigger aggregation if a job silently completed
+- **Atomic artifact writes** — results are written to a temp file then renamed into place so the download endpoint never sees a partial file
+- **Checksum verification** — workers include a SHA-256 of their result payload; mismatches are rejected and the task is requeued
 
 ### Scalability
 
-- **Horizontal Scaling**: Add unlimited worker nodes
-- **Dataset Sharding**: Automatic splitting of large datasets
-- **Load Balancing**: FIFO task distribution across workers
-- **Resource Efficient**: Workers only download required ML models
+- Task sharding allows arbitrarily large datasets to be processed in parallel
+- Workers are stateless and horizontally scalable — spin up as many as you have machines for
+- The coordinator is lightweight and runs on a small free-tier VM
 
 ### Developer Experience
 
-- **Type Safety**: Full TypeScript support in dashboard
-- **API Documentation**: Auto-generated OpenAPI/Swagger docs
-- **Docker Support**: Containerized deployment everywhere
-- **Local Development**: Complete stack with docker-compose
-- **Extensible Framework**: Simple patterns for adding workloads
-
-## Supported Workloads
-
-OpenTrain ships with three built-in ML workloads:
-
-### 1. Text Embedding (`embedding`)
-- **Model**: `sentence-transformers/all-MiniLM-L6-v2`
-- **Input**: Raw text lines
-- **Output**: 384-dimensional sentence embeddings
-- **Use Case**: Semantic search, clustering, similarity matching
-
-### 2. Tokenization (`tokenize`)
-- **Method**: Simple whitespace tokenization
-- **Input**: Text lines
-- **Output**: Token arrays per input line
-- **Use Case**: Basic text preprocessing pipeline
-
-### 3. Preprocessing (`preprocess`)
-- **Operations**: Lowercase conversion + whitespace stripping
-- **Input**: Raw text lines
-- **Output**: Cleaned text lines
-- **Use Case**: Text normalization for downstream ML tasks
-
-### Adding New Workloads
-
-Adding a new workload requires ~10 lines of code across 4 files:
-
-1. **Implement the function** in `worker/ml_tasks.py`
-2. **Register it** in the `TASK_REGISTRY`
-3. **Handle aggregation** in `coordinator/aggregator.py`
-4. **Add to dashboard** in `web-dashboard/pages/submit.tsx`
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed instructions.
-
-## Quick Start
-
-### Prerequisites
-
-- Docker and docker-compose
-- Git
-
-### Run Everything Locally
-
-```bash
-# Clone the repository
-git clone https://github.com/Rishi-dev-afk/OpenTrain.git
-cd OpenTrain
-
-# Start the complete stack
-docker compose up --build
-
-# Access the services:
-# - Dashboard: http://localhost:3000
-# - Coordinator API: http://localhost:8000
-# - API Docs: http://localhost:8000/docs
-```
-
-### Submit Your First Job
-
-1. Open http://localhost:3000
-2. Click "Submit Job"
-3. Choose "Embedding Generation"
-4. Paste some text (one sentence per line)
-5. Click "Submit"
-6. Watch progress in real-time
-7. Download results when complete
-
-## Deployment
-
-OpenTrain is designed for cloud deployment with minimal configuration:
-
-### Option 1: Render + Vercel (Recommended)
-
-#### 1. Coordinator on Render
-
-1. Fork this repository
-2. Go to [render.com](https://render.com) → **New** → **Blueprint**
-3. Connect your forked repo
-4. Render automatically detects `render.yaml` and creates the coordinator service
-5. In service **Environment** tab, set:
-   - `ALLOWED_ORIGINS` = your Vercel dashboard URL (e.g., `https://your-app.vercel.app`)
-6. Note the coordinator's public URL (e.g., `https://opentrain-coordinator.onrender.com`)
-
-#### 2. Dashboard on Vercel
-
-1. Go to [vercel.com](https://vercel.com) → **New Project**
-2. Import your forked repo
-3. Set **Root Directory** to `web-dashboard`
-4. Update `vercel.json` in your repo:
-   ```json
-   {
-     "rewrites": [
-       {
-         "source": "/api/:path*",
-         "destination": "https://YOUR-RENDER-URL.onrender.com/:path*"
-       }
-     ]
-   }
-   ```
-5. Deploy
-
-#### 3. Workers Anywhere
-
-Run workers on any machine with Docker:
-
-```bash
-# Build the worker image
-cd worker
-docker build -t opentrain/worker .
-
-# Run a worker node
-docker run opentrain/worker --server https://your-render-url.onrender.com
-```
-
-### Option 2: Local Production
-
-For self-hosted deployments:
-
-```bash
-# Start coordinator
-cd coordinator
-pip install -r requirements.txt
-ALLOWED_ORIGINS="http://localhost:3000" uvicorn main:app --host 0.0.0.0 --port 8000
-
-# Start dashboard (separate terminal)
-cd web-dashboard
-npm install && npm run dev
-
-# Start workers (separate terminals)
-cd worker
-pip install -r requirements.txt
-python worker.py --server http://localhost:8000
-```
-
-## Local Development
-
-### Individual Services
-
-```bash
-# Coordinator
-cd coordinator
-pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
-
-# Dashboard
-cd web-dashboard
-npm install && npm run dev
-
-# Worker
-cd worker
-pip install -r requirements.txt
-python worker.py --server http://localhost:8000
-```
-
-### Testing with Multiple Workers
-
-```bash
-# Scale workers with docker-compose
-docker compose up --scale worker-1=3 --scale worker-2=2
-```
-
-### Development Tools
-
-- **API Documentation**: Visit `http://localhost:8000/docs` for interactive Swagger UI
-- **Database Inspection**: SQLite database stored in `coordinator/data/opentrain.db`
-- **Logs**: All services log to stdout/stderr
-- **Hot Reload**: Coordinator and dashboard support hot reloading
-
-## API Documentation
-
-The coordinator provides a complete REST API:
-
-### Jobs
-- `GET /jobs` - List all jobs
-- `POST /jobs` - Submit new job
-- `GET /jobs/{id}` - Get job details
-- `GET /jobs/{id}/result` - Download results
-- `GET /jobs/{id}/result/summary` - Get result metadata
-
-### Tasks
-- `GET /tasks/next?worker_id={id}` - Pull next task
-- `POST /tasks/{id}/result` - Submit task result
-- `POST /tasks/{id}/fail` - Report task failure
-
-### Workers
-- `POST /workers/register` - Register worker
-- `POST /workers/heartbeat` - Send heartbeat
-- `GET /workers` - List workers
-
-### Health
-- `GET /` - Service info
-- `GET /health` - Health check
-
-Full OpenAPI specification available at `/docs` when running locally.
-
-## Contributing
-
-We welcome contributions! OpenTrain is designed to be easy to extend.
-
-### Ways to Contribute
-
-
-- **New Workloads**: Add ML processing capabilities
-- **Dashboard Improvements**: Better UI/UX, charts, themes
-- **Coordinator Features**: Priority scheduling, worker capabilities
-- **Documentation**: Guides, tutorials, translations
-- **Testing**: Integration tests, performance benchmarks
-
-### Development Setup
-
-```bash
-# Fork and clone
-git clone https://github.com/your-username/OpenTrain.git
-cd OpenTrain
-
-# Set up pre-commit hooks (optional)
-pip install pre-commit
-pre-commit install
-
-# Follow local development instructions above
-```
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed contribution guidelines.
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- Built with [FastAPI](https://fastapi.tiangolo.com/), [Next.js](https://nextjs.org/), and [SQLAlchemy](https://sqlalchemy.org/)
-- ML workloads powered by [sentence-transformers](https://sbert.net/)
-- Inspired by distributed computing platforms like BOINC and HTCondor
+- Adding a new workload type takes ~10 lines of Python — see [CONTRIBUTING.md](CONTRIBUTING.md)
+- Interactive API docs auto-generated at `/docs` (Swagger UI)
+- TypeScript types flow from the coordinator API schema through to the dashboard
+- Full local dev stack via Docker Compose
 
 ---
 
-**OpenTrain** - Democratizing distributed ML computation through volunteer computing.
+## Supported Workloads
+
+| Job Type     | Description | Output | Use Case |
+|--------------|-------------|--------|----------|
+| `embedding`  | Sentence embeddings via `all-MiniLM-L6-v2` | 384-d float vectors | Semantic search, clustering |
+| `tokenize`   | Whitespace tokenization | token arrays | Text preprocessing |
+| `preprocess` | Lowercase + trim | cleaned lines | Normalization |
+| `sentiment`  | Sentiment classification via DistilBERT | `{label, score}` | Opinion mining |
+
+Adding a new workload:
+
+1. Add `run_<name>` to `worker/ml_tasks.py`
+2. Register it in `TASK_REGISTRY`
+3. Update `_merge_results` in `coordinator/aggregator.py` if needed
+4. Add the option to `web-dashboard/pages/submit.tsx`
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for a full walkthrough.
+
+---
+
+## Quick Start
+### Try it in 60 seconds (no Docker)
+
+The coordinator and dashboard are already deployed. Run a worker locally and point it at the live system:
+```bash
+git clone https://github.com/Rishi-dev-afk/OpenTrain.git
+
+cd OpenTrain
+
+pip install -r worker/requirements.txt # Skip ONLY if necessary requirements already satisfied.
+
+python worker/worker.py --server https://opentrain.onrender.com
+
+https://open-train.vercel.app #Public deployed Dashboard
+```
+Note: The requirements may appear bulky, but are standard ML libraries needed for distributed task execution.
+
+## Launch the Full Stack Locally
+### Prerequisites
+
+- Docker & docker-compose
+- Git
+
+```bash
+git clone https://github.com/Rishi-dev-afk/OpenTrain.git
+cd OpenTrain
+docker compose up --build
+```
+
+| Service     | URL                        |
+|-------------|----------------------------|
+| Dashboard   | http://localhost:3000       |
+| Coordinator | http://localhost:8000       |
+| API Docs    | http://localhost:8000/docs  |
+
+
+---
+
+## Deployment
+
+| Service     | Platform | URL                              |
+|-------------|----------|----------------------------------|
+| Coordinator | Render   | https://opentrain.onrender.com   |
+| Dashboard   | Vercel   | https://open-train.vercel.app    |
+
+### Deploy your own
+
+**Coordinator on Render:**
+1. Fork the repo
+2. New Render service → connect repo → set root directory to `coordinator/`
+3. Build command: `pip install -r requirements.txt`
+4. Start command: `bash start.sh`
+5. Add environment variable `ALLOWED_ORIGINS` pointing to your dashboard URL
+
+**Dashboard on Vercel:**
+1. New Vercel project → connect repo → set root directory to `web-dashboard/`
+2. Add environment variable `NEXT_PUBLIC_COORDINATOR_URL=https://your-coordinator.onrender.com`
+3. Deploy
+
+**Workers — run anywhere:**
+```bash
+python worker/worker.py --server https://your-coordinator.onrender.com
+```
+Any machine with Python and network access can contribute compute.
+
+---
+
+## Local Development
+
+**Coordinator:**
+```bash
+cd coordinator
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
+```
+
+**Worker:**
+```bash
+cd worker
+pip install -r requirements.txt
+python worker.py --server http://localhost:8000
+```
+
+**Dashboard:**
+```bash
+cd web-dashboard
+cp .env.local.example .env.local
+npm install
+npm run dev
+# → http://localhost:3000
+```
+
+---
+
+## Project Structure
+
+```
+opentrain/
+├── coordinator/          FastAPI coordinator server
+│   ├── main.py           App entrypoint + lifecycle
+│   ├── models.py         SQLAlchemy models (Job, Task, Worker)
+│   ├── schemas.py        Pydantic request/response schemas
+│   ├── aggregator.py     Result merging + atomic artifact write
+│   ├── scheduler.py      Background jobs (heartbeat, timeout, recovery)
+│   ├── routes/
+│   │   ├── jobs.py       /jobs endpoints
+│   │   ├── tasks.py      /tasks/next + result submission
+│   │   └── workers.py    /workers/register + heartbeat
+│   └── start.sh          Production startup script
+│
+├── worker/               Volunteer worker node
+│   ├── worker.py         Poll loop + heartbeat thread
+│   └── ml_tasks.py       ML dispatch (embedding, tokenize, preprocess, etc.)
+│
+├── web-dashboard/        Next.js control plane
+│   ├── pages/
+│   │   ├── index.tsx     Job queue list (live polling)
+│   │   ├── submit.tsx    Job submission form
+│   │   ├── workers.tsx   Worker nodes dashboard
+│   │   └── jobs/[id].tsx Job detail + per-task breakdown
+│   ├── lib/
+│   │   └── api.ts        Typed coordinator API client
+│   └── vercel.json
+│
+├── docs/
+│   ├── architecture.md
+│   └── api-reference.md
+│
+├── docker-compose.yml
+├── render.yaml
+├── CONTRIBUTING.md
+├── ROADMAP.md
+└── README.md
+```
+
+---
+
+## API Documentation
+
+| Method | Endpoint                    | Description                     |
+|--------|-----------------------------|---------------------------------|
+| POST   | `/jobs/`                    | Submit a new job                |
+| GET    | `/jobs/`                    | List all jobs                   |
+| GET    | `/jobs/{id}`                | Job detail + task breakdown     |
+| GET    | `/jobs/{id}/result`         | Download merged result artifact |
+| POST   | `/tasks/{id}/complete`      | Worker submits result           |
+| POST   | `/workers/ping`             | Worker heartbeat                |
+| GET    | `/workers`                  | List registered workers         |
+
+Full interactive docs at `/docs` (Swagger UI) and `/redoc`.
+
+---
+
+## Contributing
+
+OpenTrain is designed to be easy to extend. The most common contribution — adding a new workload type — takes about 10 lines of code and is fully documented in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Other ways to contribute:
+- New workload types (highest impact, lowest friction)
+- Coordinator scheduling improvements
+- Dashboard UI enhancements
+- Integration tests
+- Documentation
+
+---
+
+## Roadmap
+
+Near-term: GPU scheduling, worker reputation system, dataset connectors (HuggingFace Hub, S3), token-based authentication.
+
+Long-term: distributed model training, multi-coordinator federation, decentralized coordination, incentive layer for volunteer compute.
+
+See [ROADMAP.md](ROADMAP.md) for the full plan.
+
+---
+
+## License
+
+MIT © [Rishi-dev-afk](https://github.com/Rishi-dev-afk)
