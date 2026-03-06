@@ -162,12 +162,12 @@ def create_job(
             )
         # Convert rows to text representation for stats task
         if job_type == "stats":
-            # For stats, reconstruct CSV format
-            lines = [dataset_text.split('\n')[0]]  # header
-            lines.extend([json.dumps(row) for row in rows])
+            # For stats, send the CSV rows as raw dicts (not JSON-stringified)
+            # so the worker can analyze all columns, not just a text field
+            shards = _shard_structured_data(rows, chunk_size)
         else:
             lines = [json.dumps(row) for row in rows]
-        shards = _shard_dataset(lines, chunk_size)
+            shards = _shard_dataset(lines, chunk_size)
         
     elif data_format == "json":
         # Parse JSON data
@@ -209,8 +209,8 @@ def create_job(
     # Shard dataset → Tasks
     for idx, shard in enumerate(shards):
         try:
-            if data_format == "csv":
-                # shard is a list of JSON-stringified dicts
+            if data_format == "csv" and job_type != "stats":
+                # CSV for text-based jobs: shard is list of JSON-stringified dicts
                 payloads = []
                 for item in shard:
                     if not item or not item.strip():
@@ -222,8 +222,18 @@ def create_job(
                         continue
                 if not payloads:
                     raise HTTPException(status_code=400, detail=f"CSV shard {idx} has no valid rows")
+            elif data_format == "csv" and job_type == "stats":
+                # CSV for stats: shard is JSON array (from _shard_structured_data)
+                if not shard or not shard.strip():
+                    raise HTTPException(status_code=400, detail=f"Stats CSV shard {idx} is empty")
+                try:
+                    payloads = json.loads(shard)
+                except (json.JSONDecodeError, ValueError) as e:
+                    raise HTTPException(status_code=400, detail=f"Stats CSV shard {idx} is malformed: {str(e)}")
+                if not isinstance(payloads, list):
+                    payloads = [payloads]
             elif data_format == "json":
-                # shard is a JSON string (array of dicts)
+                # JSON: shard is a JSON array string
                 if not shard or not shard.strip():
                     raise HTTPException(status_code=400, detail=f"JSON shard {idx} is empty")
                 try:
@@ -233,8 +243,10 @@ def create_job(
                 if not isinstance(payloads, list):
                     payloads = [payloads]
             else:
-                # text format
+                # Text format: shard is plain text list
                 payloads = shard if isinstance(shard, list) else shard.split('\n') if job_type == "stats" else [shard]
+        except HTTPException:
+            raise
         except Exception as e:
             print(f"[jobs] Error processing shard {idx}: {e}")
             raise
