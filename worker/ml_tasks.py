@@ -158,24 +158,39 @@ def run_stats(payload: dict) -> dict:
         }
     """
     data = payload.get("data", [])
-    texts = []
+    texts: list[str] = []
+
+    # Normalize every entry into a plain string. the original implementation
+    # tried to special-case dicts by joining their string-valued fields, but
+    # an unexpected type slipping through could still end up as a raw dict in
+    # `texts` and then blow up later when we call `.split()` or `.lower()`.
+    #
+    # Coerce everything to `str` up front and keep the logic simple; this also
+    # avoids future surprises if the payload contains numbers, None, or
+    # arbitrary objects.
     for item in data:
-        if isinstance(item, str):
-            texts.append(item)
-        elif isinstance(item, dict):
-            # For structured data (e.g., CSV rows), concatenate all string values
-            text_parts = [str(v) for v in item.values() if isinstance(v, str)]
+        if isinstance(item, dict):
+            # For structured data (e.g. CSV rows), concatenate *all* column values
+            # (not just strings).  This makes the stats job more generous with
+            # numeric or mixed-type columns and avoids the previous bug where a
+            # non-str sneaked through and ended up as a raw dict later.
+            text_parts = [str(v) for v in item.values()]
             texts.append(' '.join(text_parts))
         else:
             texts.append(str(item))
-    
+
+    # Defensive: ensure every element is a string in case some non-dict
+    # object slipped through the above logic.
+    texts = [t if isinstance(t, str) else str(t) for t in texts]
+
     if not texts:
         return {"stats": {}}
 
     # Basic statistics
     total_texts = len(texts)
     lengths = [len(t) for t in texts]
-    word_counts = [len(t.split()) for t in texts]
+    # use str() again to prevent AttributeError if somehow a non-str remains
+    word_counts = [len(str(t).split()) for t in texts]
 
     # Word-level analysis
     all_words = []
