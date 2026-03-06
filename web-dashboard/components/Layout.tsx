@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
+import OpenTrainLogo from './OpenTrainLogo';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -40,7 +41,10 @@ export default function Layout({ children }: LayoutProps) {
     <div className="layout">
       <header className="topbar">
         <Link href="/" className="topbar-logo">
-          Open<span>Train</span>
+          <OpenTrainLogo />
+          <h1>
+            OPENTRAIN
+          </h1>
         </Link>
 
         <nav className="topbar-nav">

@@ -115,6 +115,18 @@ h1, h2, h3, h4 {
   color: var(--accent);
   text-decoration: none;
   letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topbar-logo h1 {
+  margin: 0;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+  letter-spacing: inherit;
 }
 
 .topbar-logo span {
@@ -740,4 +752,19 @@ tbody td.mono {
 .accent {
   color: var(--accent);
   font-weight: 600;
+}
+
+/* ============================= */
+/* Logo */
+/* ============================= */
+
+.logo {
+  width: 32px;
+  height: 32px;
+  filter: drop-shadow(0 0 6px rgba(34, 211, 238, 0.5));
+  transition: filter 0.2s;
+}
+
+.logo:hover {
+  filter: drop-shadow(0 0 10px rgba(34, 211, 238, 0.8));
 }
