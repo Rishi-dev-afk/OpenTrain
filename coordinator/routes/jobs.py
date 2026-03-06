@@ -160,10 +160,10 @@ def create_job(
 
     # Shard dataset → Tasks
     for idx, shard in enumerate(shards):
-        if data_format in ("csv", "json"):
+        if data_format == "csv":
+            payloads = [json.loads(item) for item in shard]
+        elif data_format == "json":
             payloads = json.loads(shard)
-            if not isinstance(payloads, list):
-                payloads = [payloads]
         else:
             payloads = shard if isinstance(shard, list) else shard.split('\n') if job_type == "stats" else [shard]
 
