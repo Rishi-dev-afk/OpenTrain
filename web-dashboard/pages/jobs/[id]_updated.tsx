@@ -3,7 +3,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import { api, JobDetail, ResultSummary, TaskSummary } from '../../lib/api';
-import { SentimentChart } from '../../components/ResultCharts';
 
 function fmt(iso: string | null) {
   if (!iso) return '—';
@@ -192,18 +191,6 @@ export default function JobDetailPage() {
             />
           </div>
         </div>
-
-        {/* Visualization section for sentiment only */}
-        {isDone && resultData && job.job_type === 'sentiment' && (
-          <div className="card" style={{ marginBottom: 24 }}>
-            <div className="card-header">
-              <span className="card-label">📊 Sentiment Analysis</span>
-            </div>
-            <div style={{ padding: '16px 0' }}>
-              <SentimentChart sentimentData={resultData} />
-            </div>
-          </div>
-        )}
 
         {/* Result summary download card */}
         {isDone && summary && (
