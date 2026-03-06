@@ -216,7 +216,7 @@ cd worker
 docker build -t opentrain/worker .
 
 # Run a worker node
-docker run opentrain/worker --server https://your-render-url.onrender.com
+docker run opentrain/worker --server https://opentrain.onrender.com
 ```
 
 ### Option 2: Local Production
