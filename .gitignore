@@ -1,0 +1,30 @@
+# Node / Next.js
+node_modules/
+.next/
+out/
+dist/
+build/
+
+# Env files — never commit secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# SQLite DB — do not commit; Render disk manages this in production
+coordinator/data/
+coordinator/*.db
+coordinator/results/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+*.swp

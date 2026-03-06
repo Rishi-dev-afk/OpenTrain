@@ -1,0 +1,37 @@
+services:
+  # ── Coordinator (FastAPI web service) ──────────────────────────────────────
+  - type: web
+    name: opentrain-coordinator
+    runtime: python
+    rootDir: coordinator
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: ALLOWED_ORIGINS
+        # Update to your Vercel dashboard URL after first deploy
+        value: "https://opentrain.vercel.app"
+    disk:
+      name: opentrain-data
+      mountPath: /app/data
+      sizeGB: 1
+
+  # ── Worker (background worker, connects to coordinator) ────────────────────
+  # Uncomment if you want Render to also host a worker node.
+  # Most deployments run workers externally (volunteer machines / Docker).
+  #
+  # - type: worker
+  #   name: opentrain-worker
+  #   runtime: docker
+  #   rootDir: worker
+  #   dockerfilePath: ./Dockerfile
+  #   envVars:
+  #     - key: COORDINATOR_URL
+  #       fromService:
+  #         name: opentrain-coordinator
+  #         type: web
+  #         property: host

@@ -1,0 +1,81 @@
+version: "3.9"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# OpenTrain — local development stack
+#
+# Starts:
+#   coordinator   FastAPI coordinator   → http://localhost:8000
+#   dashboard     Next.js dashboard     → http://localhost:3000
+#   worker-1/2    Demo volunteer nodes
+#
+# Usage:
+#   docker compose up --build          # start everything
+#   docker compose up coordinator      # coordinator only
+#   docker compose scale worker-1=5   # scale workers
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  coordinator:
+    build:
+      context: ./coordinator
+      dockerfile: Dockerfile
+    container_name: opentrain-coordinator
+    ports:
+      - "8000:8000"
+    volumes:
+      - coordinator-data:/app/data
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DATA_DIR=/app/data
+      - ALLOWED_ORIGINS=http://localhost:3000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: ./web-dashboard
+      dockerfile: Dockerfile
+      args:
+        - COORDINATOR_URL=http://coordinator:8000
+    container_name: opentrain-dashboard
+    ports:
+      - "3000:3000"
+    depends_on:
+      coordinator:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker-1:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    container_name: opentrain-worker-1
+    command: ["--server", "http://coordinator:8000"]
+    environment:
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      coordinator:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker-2:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    container_name: opentrain-worker-2
+    command: ["--server", "http://coordinator:8000"]
+    environment:
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      coordinator:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  coordinator-data:
