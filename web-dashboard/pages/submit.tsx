@@ -5,34 +5,81 @@ import { api } from '../lib/api';
 
 const JOB_TYPES = [
   { value: 'embedding',  label: 'Embedding Generation',  desc: 'Generate sentence embeddings using all-MiniLM-L6-v2' },
+  { value: 'sentiment',  label: 'Sentiment Analysis',    desc: 'Classify text sentiment as positive/negative/neutral' },
+  { value: 'stats',      label: 'Statistical Analysis',  desc: 'Analyze text statistics: word counts, vocabulary, n-grams' },
   { value: 'tokenize',   label: 'Tokenization',          desc: 'Whitespace-tokenize each line of text' },
   { value: 'preprocess', label: 'Preprocessing',         desc: 'Lowercase + strip each line of text' },
 ];
 
-const EXAMPLE_DATASET = `The quick brown fox jumps over the lazy dog.
+const DATA_FORMATS = [
+  { value: 'text', label: 'Plain Text', desc: 'One item per line' },
+  { value: 'csv',  label: 'CSV Data',   desc: 'CSV format with headers' },
+  { value: 'json', label: 'JSON Data',  desc: 'JSON array or object' },
+];
+
+const EXAMPLE_TEXTS = `The quick brown fox jumps over the lazy dog.
 Machine learning models can process natural language at scale.
 Distributed systems allow computation across many volunteer machines.
 OpenTrain splits workloads into shards for parallel processing.
 Each worker node processes its assigned shard independently.`;
 
+const EXAMPLE_CSV = `text,category
+I love this product,positive
+This is terrible,negative
+Just average,neutral
+Best experience ever,positive
+Worst purchase ever,negative`;
+
+const EXAMPLE_JSON = `[
+  {"text": "I love this product", "category": "positive"},
+  {"text": "This is terrible", "category": "negative"},
+  {"text": "Just average", "category": "neutral"}
+]`;
+
 export default function SubmitPage() {
   const router = useRouter();
 
-  const [jobType,     setJobType]     = useState('embedding');
-  const [dataset,     setDataset]     = useState('');
-  const [chunkSize,   setChunkSize]   = useState(100);
-  const [submitting,  setSubmitting]  = useState(false);
-  const [error,       setError]       = useState<string | null>(null);
+  const [jobType,      setJobType]      = useState('embedding');
+  const [dataFormat,   setDataFormat]   = useState('text');
+  const [dataset,      setDataset]      = useState('');
+  const [chunkSize,    setChunkSize]    = useState(100);
+  const [submitting,   setSubmitting]   = useState(false);
+  const [error,        setError]        = useState<string | null>(null);
 
-  const lineCount  = dataset.trim() ? dataset.trim().split('\n').filter(l => l.trim()).length : 0;
-  const taskCount  = lineCount > 0 ? Math.ceil(lineCount / chunkSize) : 0;
+  const itemCount = dataset.trim() 
+    ? dataFormat === 'text'
+      ? dataset.trim().split('\n').filter(l => l.trim()).length
+      : dataFormat === 'csv'
+      ? dataset.trim().split('\n').length - 1 // exclude header
+      : (() => {
+          try {
+            const data = JSON.parse(dataset);
+            return Array.isArray(data) ? data.length : 1;
+          } catch {
+            return 0;
+          }
+        })()
+    : 0;
+  const taskCount = itemCount > 0 ? Math.ceil(itemCount / chunkSize) : 0;
+
+  const loadExample = () => {
+    if (dataFormat === 'csv') setDataset(EXAMPLE_CSV);
+    else if (dataFormat === 'json') setDataset(EXAMPLE_JSON);
+    else setDataset(EXAMPLE_TEXTS);
+  };
 
   const handleSubmit = async () => {
     if (!dataset.trim()) { setError('Dataset cannot be empty.'); return; }
     setError(null);
     setSubmitting(true);
     try {
-      const job = await api.jobs.create({ job_type: jobType, dataset_text: dataset, chunk_size: chunkSize });
+      const job = await api.jobs.create({
+        job_type: jobType,
+        dataset_text: dataset,
+        chunk_size: chunkSize,
+        data_format: dataFormat,
+        config: {},
+      });
       router.push(`/jobs/${job.id}`);
     } catch (e: any) {
       setError(e.message);
@@ -98,27 +145,67 @@ export default function SubmitPage() {
               </div>
             </div>
 
+            {/* Data format selector */}
+            <div className="card">
+              <div className="card-header">
+                <span className="card-label">Data Format</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                {DATA_FORMATS.map(df => (
+                  <label
+                    key={df.value}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 6,
+                      padding: '10px',
+                      borderRadius: 3,
+                      border: '1px solid',
+                      borderColor: dataFormat === df.value ? 'var(--accent)' : 'var(--border)',
+                      background: dataFormat === df.value ? 'var(--accent-glow)' : 'transparent',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="data_format"
+                      value={df.value}
+                      checked={dataFormat === df.value}
+                      onChange={() => setDataFormat(df.value)}
+                      style={{ accentColor: 'var(--accent)' }}
+                    />
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 600 }}>{df.label}</div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-muted)' }}>{df.desc}</div>
+                  </label>
+                ))}
+              </div>
+            </div>
+
             {/* Dataset */}
             <div className="card">
               <div className="card-header">
                 <span className="card-label">Dataset</span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: lineCount > 0 ? 'var(--accent)' : 'var(--text-muted)' }}>
-                  {lineCount.toLocaleString()} lines
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: itemCount > 0 ? 'var(--accent)' : 'var(--text-muted)' }}>
+                  {itemCount.toLocaleString()} {dataFormat === 'csv' ? 'rows' : dataFormat === 'json' ? 'items' : 'lines'}
                 </span>
               </div>
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <textarea
                   className="form-textarea"
-                  style={{ minHeight: 200, fontSize: 12 }}
-                  placeholder="Paste your dataset here — one item per line…"
+                  style={{ minHeight: 250, fontSize: 12, fontFamily: 'var(--font-mono)' }}
+                  placeholder={dataFormat === 'csv' ? 'Paste CSV data...' : dataFormat === 'json' ? 'Paste JSON array...' : 'Paste text data (one item per line)...'}
                   value={dataset}
                   onChange={e => setDataset(e.target.value)}
                   spellCheck={false}
                 />
                 <div className="form-hint">
-                  One text item per line. Empty lines are ignored.{' '}
+                  {dataFormat === 'csv' && 'CSV with headers. One row per item.'}
+                  {dataFormat === 'json' && 'JSON array of objects or single object.'}
+                  {dataFormat === 'text' && 'One text item per line. Empty lines ignored.'}
+                  {' '}
                   <button
-                    onClick={() => setDataset(EXAMPLE_DATASET)}
+                    onClick={loadExample}
                     style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 10, padding: 0 }}
                   >
                     Load example →
@@ -132,7 +219,7 @@ export default function SubmitPage() {
             <button
               className="btn btn-primary"
               onClick={handleSubmit}
-              disabled={submitting || lineCount === 0}
+              disabled={submitting || itemCount === 0}
               style={{ alignSelf: 'flex-start' }}
             >
               {submitting ? <><div className="spinner" /> Submitting…</> : '→ Submit Job'}
@@ -150,52 +237,40 @@ export default function SubmitPage() {
                   {chunkSize}
                 </span>
               </div>
-              <input
-                type="range"
-                min={10} max={1000} step={10}
-                value={chunkSize}
-                onChange={e => setChunkSize(Number(e.target.value))}
-                style={{ width: '100%', accentColor: 'var(--accent)', marginBottom: 8 }}
-              />
-              <div className="form-hint">Lines per task shard. Smaller = more tasks = more parallelism.</div>
-            </div>
-
-            {/* Preview card */}
-            <div className="card">
-              <div className="card-header">
-                <span className="card-label">Job Preview</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {[
-                  ['Type',       jobType],
-                  ['Lines',      lineCount.toLocaleString()],
-                  ['Chunk size', chunkSize],
-                  ['Tasks',      taskCount.toLocaleString()],
-                ].map(([label, val]) => (
-                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)' }}>{label}</span>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-primary)', fontWeight: 600 }}>{val}</span>
-                  </div>
-                ))}
-                <div className="divider" style={{ margin: '4px 0' }} />
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-muted)' }}>
-                  {taskCount} tasks will be distributed across available workers.
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <input
+                  type="range"
+                  min="1"
+                  max="1000"
+                  value={chunkSize}
+                  onChange={e => setChunkSize(parseInt(e.target.value))}
+                  style={{ width: '100%' }}
+                />
+                <div className="form-hint">
+                  How many {dataFormat === 'csv' ? 'rows' : 'lines'} per shard{dataFormat === 'csv' ? ' (excluding header)' : ''}.
                 </div>
               </div>
             </div>
 
-            {/* Worker join hint */}
+            {/* Task breakdown */}
             <div className="card">
               <div className="card-header">
-                <span className="card-label">Start a Worker</span>
+                <span className="card-label">Task Breakdown</span>
               </div>
-              <div className="code-block" style={{ fontSize: 11 }}>
-                <div><span className="muted">$</span> docker run opentrain/worker \</div>
-                <div style={{ paddingLeft: 16 }}>--server <span className="accent">http://localhost:8000</span> \</div>
-                <div style={{ paddingLeft: 16 }}>--token <span className="green">your-token</span></div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)' }}>Total tasks</div>
+                  <div style={{ fontSize: 20, fontWeight: 600, color: 'var(--accent)' }}>{taskCount}</div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)' }}>Items/task</div>
+                  <div style={{ fontSize: 20, fontWeight: 600, color: 'var(--text-secondary)' }}>{chunkSize}</div>
+                </div>
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 12, padding: '8px', background: 'var(--bg-hover)', borderRadius: 3 }}>
+                Your dataset will be split into <strong>{taskCount}</strong> parallel task{taskCount !== 1 ? 's' : ''}. Each volunteer worker will process one shard.
               </div>
             </div>
-
           </div>
         </div>
       </div>
