@@ -3,7 +3,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import { api, JobDetail, ResultSummary, TaskSummary } from '../../lib/api';
-import { SentimentChart } from '../../components/ResultCharts';
 
 function fmt(iso: string | null) {
   if (!iso) return '—';
